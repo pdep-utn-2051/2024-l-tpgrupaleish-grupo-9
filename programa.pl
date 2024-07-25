@@ -148,11 +148,14 @@ vidaUnidad(piquero(2, conEscudo), 71.5).
 vidaUnidad(piquero(3, conEscudo), 77).
 vidaUnidad(campeon(Vida), Vida).
 
-unidadMasViva(Jugador, Unidad, MaxVida) :-
+/*unidadMasViva(Jugador, Unidad, MaxVida) :-
     jugador(Jugador), unidadExistente(Unidad),
     findall((Vida, Unidad), (tiene(Jugador, Unidad), vidaUnidad(Unidad, Vida)), ListaUnidades),
-    max_member((MaxVida, UnidadMaxima), ListaUnidades),
-    vidaUnidad(Unidad, MaxVida),
-    Unidad = UnidadMaxima.
+    max_member((MaxVida, UnidadMaxima), ListaUnidades).
+*/
+unidadConMasVida(Jugador, Unidad, Vida) :-
+    tiene(Jugador, Unidad),
+    vidaUnidad(Unidad, Vida),
+    not((tiene(Jugador, OtraUnidad), vidaUnidad(OtraUnidad, OtraVida), OtraUnidad \= Unidad, OtraVida > Vida)). 
 
 
