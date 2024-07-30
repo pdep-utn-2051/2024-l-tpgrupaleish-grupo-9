@@ -24,6 +24,13 @@ tecnologia(forja).
 tecnologia(fundicion).
 tecnologia(emplumado).
 tecnologia(laminas).
+tecnologia(collera).
+tecnologia(molino).
+tecnologia(aradoPesado).
+tecnologia(puntaAcero).
+tecnologia(altoHorno).
+tecnologia(cotaMalla).
+tecnologia(placaMalla).
 
 juegaCon(ana, romanos).
 juegaCon(beto, incas).
@@ -102,32 +109,19 @@ jinete a camello.
 ● Carola tiene un piquero sin escudo de nivel 3 y uno con escudo de nivel 2.
 ● Dimitri no tiene unidades.
 */
+unidad(campeon(Vida)) :- between(1, 100, Vida).
 
-campeon(Vida) :-
-    posibleVida(Vida).
+unidad(jinete(caballo)).
+unidad(jinete(camello)).
 
-posibleVida(Vida) :-
-    between(1, 100, Vida).
-
-jinete(caballo).
-jinete(camello).
-
-piquero(Nivel, Escudo) :-
+unidad(piquero(Nivel, Escudo)) :- 
     Nivel >=1, Nivel =<3,
     (Escudo = conEscudo; Escudo = sinEscudo).
 
-tiene(ana, jinete(caballo)).
-tiene(ana, piquero(1, conEscudo)).
-tiene(ana, piquero(2, sinEscudo)).
-tiene(beto, campeon(100)).
-tiene(beto, campeon(80)).
-tiene(beto, piquero(1, conEscudo)).
-tiene(beto, jinete(camello)).
-tiene(carola, piquero(3, sinEscudo)).
-tiene(carola, piquero(2, conEscudo)).
+unidades(ana, [jinete(caballo), piquero(1, conEscudo), piquero(2, sinEscudo)]).
+unidades(beto, [campeon(100), campeon(80), piquero(1, conEscudo), jinete(camello)]).
+unidades(carola, [piquero(3, sinEscudo), piquero(2, conEscudo)]).
 
-unidadExistente(Unidad) :-
-    tiene(_, Unidad).
 /*
 7). Conocer la unidad con más vida que tiene un jugador, teniendo en cuenta que:
 ● Los jinetes a camello tienen 80 de vida y los jinetes a caballo tienen 90.
@@ -148,14 +142,91 @@ vidaUnidad(piquero(2, conEscudo), 71.5).
 vidaUnidad(piquero(3, conEscudo), 77).
 vidaUnidad(campeon(Vida), Vida).
 
-/*unidadMasViva(Jugador, Unidad, MaxVida) :-
-    jugador(Jugador), unidadExistente(Unidad),
-    findall((Vida, Unidad), (tiene(Jugador, Unidad), vidaUnidad(Unidad, Vida)), ListaUnidades),
-    max_member((MaxVida, UnidadMaxima), ListaUnidades).
+unidadConMasVida(Jugador, Unidad, VidaMaxima) :-
+    unidades(Jugador, Unidades),
+    findall((Vida, Unidad), (member(Unidad, Unidades), vidaUnidad(Unidad, Vida)), ListaVidaUnidades),
+    max_member((VidaMaxima, Unidad), ListaVidaUnidades).
+
+/*
+8). Queremos (saber si una unidad le gana a otra. Las unidades tienen una ventaja por tipo sobre otras.
+Cualquier jinete le gana a cualquier campeón, cualquier campeón le gana a cualquier piquero y
+cualquier piquero le gana a cualquier jinete, pero los jinetes a camello le ganan a los a caballo. En
+caso de que no exista ventaja entre las unidades, se compara la vida (el de mayor vida gana).
+Este punto no necesita ser inversible.
+por ejemplo, un campeón con 95 de vida le gana a otro con 50, pero un campeón con 100 de vida no
+le gana a un jinete a caballo.
 */
-unidadConMasVida(Jugador, Unidad, Vida) :-
-    tiene(Jugador, Unidad),
-    vidaUnidad(Unidad, Vida),
-    not((tiene(Jugador, OtraUnidad), vidaUnidad(OtraUnidad, OtraVida), OtraUnidad \= Unidad, OtraVida > Vida)). 
+ganaContra(Unidad1, Unidad2) :-
+    unidad(Unidad1), unidad(Unidad2),
+    (gana(Unidad1, Unidad2);
+    (vidaUnidad(Unidad1, Vida1),
+     vidaUnidad(Unidad2, Vida2), Vida1 > Vida2,
+      not(gana(Unidad2, Unidad1))
+    )
+    ).
+
+gana(jinete(_), campeon(_)).
+gana(campeon(_), piquero(_,_)).
+gana(piquero(_,_), jinete(_)).
+gana(jinete(camello), jinete(caballo)).
+
+/*
+9). Saber si un jugador puede sobrevivir a un asedio. Esto ocurre si tiene más piqueros con escudo que
+sin escudo.
+En los ejemplos, Beto es el único que puede sobrevivir a un asedio, pues tiene 1 piquero con escudo y
+0 sin escudo.
+*/
+sobreviveAsedio(Jugador) :-
+    jugador(Jugador),
+    unidades(Jugador, UnidadesJugador),
+    findall(Piquero, (member(Piquero, UnidadesJugador), Piquero = piquero(_, conEscudo)), PiquerosConEscudo),
+    findall(Piquero, (member(Piquero, UnidadesJugador), Piquero = piquero(_, sinEscudo)), PiquerosSinEscudo),
+    length(PiquerosConEscudo, Cant1),
+    length(PiquerosSinEscudo, Cant2),
+    (Cant1 > Cant2).
+
+/*
+10). Árbol de tecnologías
+a. Se sabe que existe un árbol de tecnologías, que indica dependencias entre ellas. Hasta no 
+desarrollar una, no se puede desarrollar la siguiente. Modelar el siguiente árbol de ejemplo:
+*/
+requiereDe(collera,molino).
+requiereDe(aradoPesado,collera).
+requiereDe(emplumado, herreria).
+requiereDe(puntaAcero, emplumado).
+requiereDe(forja, herreria).
+requiereDe(fundicion,forja).
+requiereDe(altoHorno, fundicion).
+requiereDe(laminas, herreria).
+requiereDe(cotaMalla,laminas).
+requiereDe(placaMalla,cotaMalla).
+
+%Para casos directos
+arbolDependencias(TecnologiaPadre, TecnologiaDependiente) :-
+    tecnologia(TecnologiaPadre),
+    tecnologia(TecnologiaDependiente),
+    requiereDe(TecnologiaDependiente, TecnologiaPadre).
+
+%Para casos intermedios
+arbolDependencias(TecnologiaPadre, TecnologiaDependiente) :-
+    tecnologia(TecnologiaPadre),
+    tecnologia(OtraTecnologia),
+    requiereDe(OtraTecnologia, TecnologiaPadre),
+    arbolDependencias(OtraTecnologia, TecnologiaDependiente).
+
+/*
+b. Saber si un jugador puede desarrollar una tecnología, que se cumple cuando ya desarrolló
+todas sus dependencias (las directas y las indirectas). Considerar que pueden existir árboles
+de cualquier tamaño.
+En el ejemplo, beto puede desarrollar el molino (pues no tiene dependencias) pero no la
+herrería (porque ya la tiene), y ana puede desarrollar fundición (pues tiene forja y herrería).
+*/
+puedeDesarrollar(Jugador, Tecnologia) :-
+    jugador(Jugador),
+    tecnologia(Tecnologia),
+    not(desarrollo(Jugador, Tecnologia)),
+    forall(arbolDependencias(Dependencias, Tecnologia), desarrollo(Jugador, Dependencias)).
+    
 
 
+ 
