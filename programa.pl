@@ -65,8 +65,9 @@ En los ejemplos, los romanos son una civilización popular, pero los incas no
 */
 civilizacionPopular(Civilizacion) :-
     civilizacion(Civilizacion),
-    findall(Jugador, juegaCon(Jugador, Civilizacion), Jugadores),
-    length(Jugadores, Cant), Cant>1.
+    juegaCon(Jugador1, Civilizacion),
+    juegaCon(Jugador2, Civilizacion),
+    Jugador1 \= Jugador2.
 
 /*
 4). Saber si una tecnología tiene alcance global, que sucede cuando a nadie le falta desarrollarla.
